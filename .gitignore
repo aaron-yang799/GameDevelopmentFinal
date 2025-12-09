@@ -1,0 +1,33 @@
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+UserSettings/
+
+MemoryCaptures/
+
+# Visual Studio / Rider / VSCode
+.vscode/
+*.csproj
+*.sln
+*.user
+*.unityproj
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# OS crap
+.DS_Store
+Thumbs.db
+
+# Crash reports
+*.dmp
+
+# Plastic SCM cache
+.plastic/
