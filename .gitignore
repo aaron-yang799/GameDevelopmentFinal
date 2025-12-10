@@ -4,9 +4,13 @@
 [Bb]uild/
 [Bb]uilds/
 [Ll]ogs/
-UserSettings/
-
 MemoryCaptures/
+
+# Unity user-specific settings (ignore only the user file)
+ProjectSettings/EditorUserSettings.asset
+
+# But keep the rest of UserSettings
+# (DON'T ignore entire UserSettings)
 
 # Visual Studio / Rider / VSCode
 .vscode/
@@ -21,8 +25,9 @@ MemoryCaptures/
 *.mdb
 *.opendb
 *.VC.db
+.vs/
 
-# OS crap
+# OS trash
 .DS_Store
 Thumbs.db
 
