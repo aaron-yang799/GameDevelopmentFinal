@@ -31,14 +31,14 @@ public class GridManager : MonoBehaviour
         
         InitializeGrid();
     }
-    
-    /// <summary>
+
     /// Initializes the walkable grid by raycasting to detect walls.
+    /// Only detects walls, ignores players and other objects.
     /// </summary>
     void InitializeGrid()
     {
         walkableGrid = new bool[gridWidth, gridHeight];
-        
+
         // Mark all as walkable initially
         for (int x = 0; x < gridWidth; x++)
         {
@@ -47,32 +47,32 @@ public class GridManager : MonoBehaviour
                 walkableGrid[x, y] = true;
             }
         }
-        
+
         // Check for walls using raycasts from above
         for (int x = 0; x < gridWidth; x++)
         {
             for (int y = 0; y < gridHeight; y++)
             {
                 Vector3 worldPos = GridToWorld(new Vector2Int(x, y));
+                RaycastHit hit;
+
                 // Cast ray from above to detect walls
-                if (Physics.Raycast(worldPos + Vector3.up * 10, Vector3.down, 20f))
+                if (Physics.Raycast(worldPos + Vector3.up * 10, Vector3.down, out hit, 20f))
                 {
-                    // Check if it hit a wall (not a trigger)
-                    RaycastHit hit;
-                    if (Physics.Raycast(worldPos + Vector3.up * 10, Vector3.down, out hit, 20f))
+                    // Only mark as wall if it's NOT a trigger AND NOT a player or ghost
+                    if (!hit.collider.isTrigger &&
+                        !hit.collider.CompareTag("Player") &&
+                        !hit.collider.CompareTag("Ghost"))
                     {
-                        if (!hit.collider.isTrigger)
-                        {
-                            walkableGrid[x, y] = false;
-                        }
+                        walkableGrid[x, y] = false;
                     }
                 }
             }
         }
-        
+
         Debug.Log($"Grid initialized: {gridWidth}x{gridHeight}");
     }
-    
+
     /// <summary>
     /// Converts grid coordinates to world position.
     /// Grid (0,0) is bottom-left, World (0,0,0) is center of map.
