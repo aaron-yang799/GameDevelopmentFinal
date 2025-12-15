@@ -46,9 +46,13 @@ public class PlayerController : MonoBehaviour
 
     void Update()
     {
+        // ALWAYS allow swap input, even when dead (for last-man-standing)
+        HandleSwapInput();
+
+        // Movement only when alive
         if (!isAlive) return;
 
-        // Handle input (stores buffered direction)
+        // Handle movement input
         HandleInput();
 
         // Move if we're currently moving
@@ -78,9 +82,23 @@ public class PlayerController : MonoBehaviour
     /// <summary>
     /// Handles player input and buffers it.
     /// </summary>
+    /// <summary>
+    /// Handles swap input (works even when dead).
+    /// </summary>
+    void HandleSwapInput()
+    {
+        if (Input.GetKeyDown(swapKey))
+        {
+            GameManager.Instance?.InitiateSwap(playerNumber);
+        }
+    }
+
+    /// <summary>
+    /// Handles movement input (only when alive).
+    /// </summary>
     void HandleInput()
     {
-        // Check for new input and buffer it
+        // Check for new input
         if (Input.GetKey(upKey))
         {
             bufferedDirection = new Vector2Int(0, 1);
@@ -96,12 +114,6 @@ public class PlayerController : MonoBehaviour
         else if (Input.GetKey(rightKey))
         {
             bufferedDirection = new Vector2Int(1, 0);
-        }
-
-        // Swap mechanic
-        if (Input.GetKeyDown(swapKey))
-        {
-            GameManager.Instance?.InitiateSwap(playerNumber);
         }
     }
 

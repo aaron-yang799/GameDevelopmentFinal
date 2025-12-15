@@ -1,6 +1,7 @@
+using System.Collections;
+using System.Security.Cryptography;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using System.Collections;
 
 /// <summary>
 /// Main game manager with infinite level progression.
@@ -372,17 +373,74 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Executes the position swap between players.
+    /// During last-man-standing (one player dead), swaps life state too.
+    /// </summary>
     void ExecuteSwap()
     {
-        Vector2Int pos1 = player1.GetGridPosition();
-        Vector2Int pos2 = player2.GetGridPosition();
+        // Check if we're in last-man-standing mode (one player dead, one alive)
+        bool isLastManStanding = (!player1.isAlive && player2.isAlive) || (player1.isAlive && !player2.isAlive);
 
-        player1.SetGridPosition(pos2);
-        player2.SetGridPosition(pos1);
+        if (isLastManStanding)
+        {
+            // Last-man-standing: Swap life states
+            if (!player1.isAlive && player2.isAlive)
+            {
+                // Player 1 is dead, Player 2 is alive
+                // Swap: Player 1 becomes alive at Player 2's position, Player 2 dies
+                Vector2Int player2Pos = player2.GetGridPosition();
 
+                player2.Die(); // Player 2 dies
+                player1.isAlive = true; // Player 1 lives
+                player1.SetGridPosition(player2Pos, preserveMovement: false);
+
+                // Make Player 1 visible
+                Renderer rend1 = player1.GetComponent<Renderer>();
+                if (rend1 != null)
+                {
+                    rend1.enabled = true;
+                }
+
+                Debug.Log("Life swap: Player 1 now alive, Player 2 now dead");
+            }
+            else if (player1.isAlive && !player2.isAlive)
+            {
+                // Player 1 is alive, Player 2 is dead
+                // Swap: Player 2 becomes alive at Player 1's position, Player 1 dies
+                Vector2Int player1Pos = player1.GetGridPosition();
+
+                player1.Die(); // Player 1 dies
+                player2.isAlive = true; // Player 2 lives
+                player2.SetGridPosition(player1Pos, preserveMovement: false);
+
+                // Make Player 2 visible
+                Renderer rend2 = player2.GetComponent<Renderer>();
+                if (rend2 != null)
+                {
+                    rend2.enabled = true;
+                }
+
+                Debug.Log("Life swap: Player 2 now alive, Player 1 now dead");
+            }
+        }
+        else
+        {
+            // Normal swap: Both alive, just swap positions
+            Vector2Int pos1 = player1.GetGridPosition();
+            Vector2Int pos2 = player2.GetGridPosition();
+
+            player1.SetGridPosition(pos2, preserveMovement: false);
+            player2.SetGridPosition(pos1, preserveMovement: false);
+
+            Debug.Log("Normal position swap");
+        }
+
+        // End swap window
         isSwapWindowActive = false;
         uiManager?.ShowSwapWindow(false);
 
+        // Start cooldown
         canSwap = false;
         swapCooldownTimer = swapCooldown;
     }
