@@ -53,14 +53,16 @@ public class GhostAI : MonoBehaviour
 
     // Material
     private Renderer ghostRenderer;
-    private Color normalColor = Color.red;
+    private Color normalColor = Color.white;
     private Color scaredColor = Color.blue;
     private Color respawnColor = new Color(0.5f, 0.5f, 0.5f, 0.5f);
+    private MaterialPropertyBlock propBlock;
 
     void Awake()
     {
         ghostRenderer = GetComponent<Renderer>();
         initialWorldPosition = transform.position;
+        propBlock = new MaterialPropertyBlock(); // Add this line
 
         Debug.Log($"Ghost '{gameObject.name}' Awake - stored position: {initialWorldPosition}");
     }
@@ -426,7 +428,9 @@ public class GhostAI : MonoBehaviour
 
         if (ghostRenderer != null)
         {
-            ghostRenderer.material.color = scared ? scaredColor : normalColor;
+            ghostRenderer.GetPropertyBlock(propBlock);
+            propBlock.SetColor("_BaseColor", scared ? scaredColor : normalColor);
+            ghostRenderer.SetPropertyBlock(propBlock);
         }
 
         currentPath.Clear();
