@@ -9,14 +9,14 @@ using System.Collections.Generic;
 public class GridManager : MonoBehaviour
 {
     public static GridManager Instance;
-    
+
     [Header("Grid Settings")]
     public int gridWidth = 28;
     public int gridHeight = 31;
     public float cellSize = 1f;
-    
+
     private bool[,] walkableGrid; // true = walkable, false = wall
-    
+
     void Awake()
     {
         if (Instance == null)
@@ -28,7 +28,7 @@ public class GridManager : MonoBehaviour
             Destroy(gameObject);
             return;
         }
-        
+
         InitializeGrid();
     }
 
@@ -80,23 +80,24 @@ public class GridManager : MonoBehaviour
     public Vector3 GridToWorld(Vector2Int gridPos)
     {
         return new Vector3(
-            (gridPos.x - 13.5f) * cellSize,  // Center at 13.5 for 28-width grid
+            (gridPos.x - 15.5f) * cellSize,  // Center at 15.5 for 32-width grid (0-31)
             0,
-            (gridPos.y - 15f) * cellSize     // Center at 15 for 31-height grid
+            (gridPos.y - 15f) * cellSize     // Center at 15 for 31-height grid (0-30)
         );
     }
-    
+
     /// <summary>
     /// Converts world position to grid coordinates.
+    /// For 32x31 grid.
     /// </summary>
     public Vector2Int WorldToGrid(Vector3 worldPos)
     {
         return new Vector2Int(
-            Mathf.RoundToInt(worldPos.x / cellSize + 13.5f),
+            Mathf.RoundToInt(worldPos.x / cellSize + 15.5f),
             Mathf.RoundToInt(worldPos.z / cellSize + 15f)
         );
     }
-    
+
     /// <summary>
     /// Checks if a grid position is walkable (not a wall and within bounds).
     /// </summary>
@@ -104,10 +105,10 @@ public class GridManager : MonoBehaviour
     {
         if (gridPos.x < 0 || gridPos.x >= gridWidth || gridPos.y < 0 || gridPos.y >= gridHeight)
             return false;
-        
+
         return walkableGrid[gridPos.x, gridPos.y];
     }
-    
+
     /// <summary>
     /// Gets all walkable neighboring cells (up, down, left, right).
     /// </summary>
@@ -115,7 +116,7 @@ public class GridManager : MonoBehaviour
     {
         List<Vector2Int> neighbors = new List<Vector2Int>();
         Vector2Int[] directions = { Vector2Int.up, Vector2Int.down, Vector2Int.left, Vector2Int.right };
-        
+
         foreach (Vector2Int dir in directions)
         {
             Vector2Int neighbor = gridPos + dir;
@@ -124,17 +125,17 @@ public class GridManager : MonoBehaviour
                 neighbors.Add(neighbor);
             }
         }
-        
+
         return neighbors;
     }
-    
+
     /// <summary>
     /// Debug: Visualizes the grid in Scene view.
     /// </summary>
     void OnDrawGizmos()
     {
         if (walkableGrid == null) return;
-        
+
         for (int x = 0; x < gridWidth; x++)
         {
             for (int y = 0; y < gridHeight; y++)

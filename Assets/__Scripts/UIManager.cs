@@ -2,70 +2,84 @@ using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
 
-/// <summary>
-/// Manages all UI elements in the game.
-/// Updates scores, lives, swap UI, power-up indicator, and game over screen.
-/// </summary>
 public class UIManager : MonoBehaviour
 {
     [Header("Score Display")]
     public TextMeshProUGUI player1ScoreText;
     public TextMeshProUGUI player2ScoreText;
     public TextMeshProUGUI totalScoreText;
-    
+    public TextMeshProUGUI highScoreText;
+
+    [Header("Level Display")]
+    public TextMeshProUGUI levelText;
+
     [Header("Lives Display")]
     public TextMeshProUGUI livesText;
-    
+
     [Header("Swap UI")]
     public GameObject swapPanel;
     public TextMeshProUGUI swapTimerText;
-    
+
     [Header("Power-Up UI")]
     public TextMeshProUGUI powerUpText;
-    
+
+    [Header("Level Complete UI")]
+    public GameObject levelCompletePanel;
+    public TextMeshProUGUI levelCompleteText;
+
     [Header("Game Over UI")]
     public GameObject gameOverPanel;
     public TextMeshProUGUI gameOverText;
+    public TextMeshProUGUI finalScoreText;
+    public TextMeshProUGUI finalLevelText;
     public Button restartButton;
-    
+
     void Start()
     {
-        // Connect restart button to GameManager
         if (restartButton != null)
         {
             restartButton.onClick.AddListener(() => GameManager.Instance?.RestartGame());
         }
-        
-        // Make sure panels are hidden at start
+
         if (swapPanel != null) swapPanel.SetActive(false);
         if (powerUpText != null) powerUpText.gameObject.SetActive(false);
+        if (levelCompletePanel != null) levelCompletePanel.SetActive(false);
         if (gameOverPanel != null) gameOverPanel.SetActive(false);
     }
-    
-    /// <summary>
-    /// Updates score displays for both players and total.
-    /// </summary>
-    public void UpdateScores(int p1Score, int p2Score)
+
+    public void UpdateScores(int p1Score, int p2Score, int highScore)
     {
         if (player1ScoreText != null)
         {
             player1ScoreText.text = $"P1: {p1Score}";
         }
-        
+
         if (player2ScoreText != null)
         {
             player2ScoreText.text = $"P2: {p2Score}";
         }
-        
+
+        int totalScore = p1Score + p2Score;
+
         if (totalScoreText != null)
         {
-            totalScoreText.text = $"SCORE: {p1Score + p2Score}";
+            totalScoreText.text = $"SCORE: {totalScore}";
+        }
+
+        if (highScoreText != null)
+        {
+            highScoreText.text = $"HIGH SCORE: {highScore}";
         }
     }
-    
-    /// <summary>
-    /// Updates lives display.
-    /// </summary>
+
+    public void UpdateLevel(int level)
+    {
+        if (levelText != null)
+        {
+            levelText.text = $"LEVEL {level}";
+        }
+    }
+
     public void UpdateLives(int lives)
     {
         if (livesText != null)
@@ -73,10 +87,7 @@ public class UIManager : MonoBehaviour
             livesText.text = $"LIVES: {lives}";
         }
     }
-    
-    /// <summary>
-    /// Shows or hides the swap window.
-    /// </summary>
+
     public void ShowSwapWindow(bool show)
     {
         if (swapPanel != null)
@@ -84,10 +95,7 @@ public class UIManager : MonoBehaviour
             swapPanel.SetActive(show);
         }
     }
-    
-    /// <summary>
-    /// Updates the swap countdown timer.
-    /// </summary>
+
     public void UpdateSwapTimer(float time)
     {
         if (swapTimerText != null)
@@ -95,10 +103,7 @@ public class UIManager : MonoBehaviour
             swapTimerText.text = time.ToString("F1");
         }
     }
-    
-    /// <summary>
-    /// Shows or hides power-up active indicator.
-    /// </summary>
+
     public void ShowPowerUpActive(bool active)
     {
         if (powerUpText != null)
@@ -106,22 +111,58 @@ public class UIManager : MonoBehaviour
             powerUpText.gameObject.SetActive(active);
         }
     }
-    
-    /// <summary>
-    /// Shows game over screen.
-    /// </summary>
-    /// <param name="won">True if players won, false if they lost</param>
-    public void ShowGameOver(bool won)
+
+    public void ShowLevelComplete(int level)
+    {
+        if (levelCompletePanel != null)
+        {
+            levelCompletePanel.SetActive(true);
+        }
+
+        if (levelCompleteText != null)
+        {
+            levelCompleteText.text = $"LEVEL {level} COMPLETE!";
+        }
+    }
+
+    public void HideLevelComplete()
+    {
+        if (levelCompletePanel != null)
+        {
+            levelCompletePanel.SetActive(false);
+        }
+    }
+
+    public void ShowGameOver(int finalLevel, int finalScore, int highScore)
     {
         if (gameOverPanel != null)
         {
             gameOverPanel.SetActive(true);
         }
-        
+
         if (gameOverText != null)
         {
-            gameOverText.text = won ? "YOU WIN!" : "GAME OVER";
-            gameOverText.color = won ? Color.green : Color.red;
+            gameOverText.text = "GAME OVER";
+            gameOverText.color = Color.red;
+        }
+
+        if (finalLevelText != null)
+        {
+            finalLevelText.text = $"Reached Level {finalLevel}";
+        }
+
+        if (finalScoreText != null)
+        {
+            if (finalScore >= highScore)
+            {
+                finalScoreText.text = $"NEW HIGH SCORE: {finalScore}!";
+                finalScoreText.color = Color.yellow;
+            }
+            else
+            {
+                finalScoreText.text = $"Score: {finalScore}\nHigh Score: {highScore}";
+                finalScoreText.color = Color.white;
+            }
         }
     }
 }
