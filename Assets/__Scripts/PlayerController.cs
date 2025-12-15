@@ -200,15 +200,20 @@ public class PlayerController : MonoBehaviour
     /// <summary>
     /// Sets the grid position (used for spawning and swapping).
     /// </summary>
-    public void SetGridPosition(Vector2Int gridPos)
+    public void SetGridPosition(Vector2Int gridPos, bool preserveMovement = false)
     {
         currentGridPos = gridPos;
         targetGridPos = gridPos;
         targetWorldPos = GridManager.Instance.GridToWorld(gridPos);
         transform.position = targetWorldPos;
         isMoving = false;
-        currentDirection = Vector2Int.zero;
-        bufferedDirection = Vector2Int.zero;
+
+        // Only clear direction if NOT preserving movement (e.g., for respawn/swap)
+        if (!preserveMovement)
+        {
+            currentDirection = Vector2Int.zero;
+            bufferedDirection = Vector2Int.zero;
+        }
     }
 
     /// <summary>

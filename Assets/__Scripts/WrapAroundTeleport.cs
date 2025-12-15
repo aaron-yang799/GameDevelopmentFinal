@@ -41,10 +41,13 @@ public class WrapAroundTeleport : MonoBehaviour
     {
         Vector2Int destGridPos = GridManager.Instance.WorldToGrid(pairedTeleporter.transform.position);
 
-        player.SetGridPosition(destGridPos);
+        // Teleport while preserving movement direction
+        player.SetGridPosition(destGridPos, preserveMovement: true);
 
         lastTeleportTime = Time.time;
         pairedTeleporter.lastTeleportTime = Time.time;
+
+        Debug.Log($"Player {player.playerNumber} teleported from {gameObject.name} to {pairedTeleporter.gameObject.name}");
     }
 
     void TeleportGhost(Transform ghostTransform)
