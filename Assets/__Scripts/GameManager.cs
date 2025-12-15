@@ -1,12 +1,12 @@
-using System.Collections;
-using System.Security.Cryptography;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using System.Collections;
 
 /// <summary>
 /// Main game manager with infinite level progression.
 /// Each level increases ghost speed by 0.4.
 /// Tracks high score across sessions.
+/// Awards bonus life for completing levels.
 /// </summary>
 public class GameManager : MonoBehaviour
 {
@@ -29,6 +29,7 @@ public class GameManager : MonoBehaviour
     public float baseGhostSpeed = 3f;
     public float speedIncreasePerLevel = 0.4f;
     public float levelTransitionDelay = 2f;
+    public int maxLives = 9; // Maximum lives cap
 
     [Header("UI")]
     public UIManager uiManager;
@@ -80,6 +81,9 @@ public class GameManager : MonoBehaviour
         StartLevel();
     }
 
+    /// <summary>
+    /// Starts a new level.
+    /// </summary>
     void StartLevel()
     {
         Debug.Log($"===== STARTING LEVEL {currentLevel} =====");
@@ -107,6 +111,10 @@ public class GameManager : MonoBehaviour
         UpdateUI();
     }
 
+    /// <summary>
+    /// Counts pellets immediately (synchronous).
+    /// CRITICAL FIX: Prevents race condition where pellets are collected before counting finishes.
+    /// </summary>
     void CountPelletsNow()
     {
         totalPellets = GameObject.FindGameObjectsWithTag("PelletYellow").Length +
@@ -120,7 +128,7 @@ public class GameManager : MonoBehaviour
 
         if (totalPellets == 0)
         {
-            Debug.LogError("CRITICAL: No pellets spawned!");
+            Debug.LogError("CRITICAL: No pellets spawned! Check PelletSpawner configuration!");
         }
     }
 
@@ -158,6 +166,9 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Called when a player collects a pellet.
+    /// </summary>
     public void CollectPellet(Pellet pellet, int playerNumber)
     {
         if (totalPellets == 0)
@@ -200,6 +211,10 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Called when all pellets are collected.
+    /// Advances to next level instead of ending game.
+    /// </summary>
     void CompleteLevel()
     {
         if (totalPellets <= 0)
@@ -210,12 +225,15 @@ public class GameManager : MonoBehaviour
 
         Debug.Log($"===== LEVEL {currentLevel} COMPLETE! =====");
 
-        // Play level complete sound
         AudioManager.Instance?.PlayLevelComplete();
 
         StartCoroutine(LevelTransition());
     }
 
+    /// <summary>
+    /// Handles transition to next level.
+    /// Awards bonus life for completing level.
+    /// </summary>
     IEnumerator LevelTransition()
     {
         isTransitioningLevel = true;
@@ -236,6 +254,17 @@ public class GameManager : MonoBehaviour
 
         ClearAllPellets();
 
+        // Award bonus life for completing level
+        if (lives < maxLives)
+        {
+            lives++;
+            Debug.Log($"Bonus life awarded! Lives: {lives}");
+        }
+        else
+        {
+            Debug.Log($"Already at max lives ({maxLives})");
+        }
+
         currentLevel++;
 
         player1.enabled = true;
@@ -251,6 +280,9 @@ public class GameManager : MonoBehaviour
         StartLevel();
     }
 
+    /// <summary>
+    /// Clears all remaining pellets from the scene.
+    /// </summary>
     void ClearAllPellets()
     {
         GameObject[] allPellets = GameObject.FindGameObjectsWithTag("PelletYellow");
@@ -266,13 +298,15 @@ public class GameManager : MonoBehaviour
         foreach (GameObject pellet in allPellets) Destroy(pellet);
     }
 
+    /// <summary>
+    /// Called when a ghost touches a player.
+    /// </summary>
     public void PlayerHitByGhost(PlayerController player)
     {
         if (lives > 0)
         {
             lives--;
 
-            // Play death sound
             AudioManager.Instance?.PlayPlayerDeath();
 
             player.Respawn();
@@ -285,7 +319,6 @@ public class GameManager : MonoBehaviour
         }
         else
         {
-            // Play death sound
             AudioManager.Instance?.PlayPlayerDeath();
 
             player.Die();
@@ -297,6 +330,9 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Called when a ghost is eaten during power-up.
+    /// </summary>
     public void GhostEaten(GhostAI ghost, int playerNumber)
     {
         int points = 200;
@@ -319,12 +355,14 @@ public class GameManager : MonoBehaviour
             PlayerPrefs.Save();
         }
 
-        // Play ghost eaten sound
         AudioManager.Instance?.PlayGhostEaten();
 
         UpdateUI();
     }
 
+    /// <summary>
+    /// Activates power-up mode for both players.
+    /// </summary>
     void ActivatePowerUp()
     {
         isPowerUpActive = true;
@@ -341,6 +379,9 @@ public class GameManager : MonoBehaviour
         uiManager?.ShowPowerUpActive(true);
     }
 
+    /// <summary>
+    /// Ends power-up mode.
+    /// </summary>
     void EndPowerUp()
     {
         isPowerUpActive = false;
@@ -353,6 +394,9 @@ public class GameManager : MonoBehaviour
         uiManager?.ShowPowerUpActive(false);
     }
 
+    /// <summary>
+    /// Initiates the swap sequence.
+    /// </summary>
     public void InitiateSwap(int playerNumber)
     {
         if (!canSwap) return;
@@ -388,14 +432,12 @@ public class GameManager : MonoBehaviour
             if (!player1.isAlive && player2.isAlive)
             {
                 // Player 1 is dead, Player 2 is alive
-                // Swap: Player 1 becomes alive at Player 2's position, Player 2 dies
                 Vector2Int player2Pos = player2.GetGridPosition();
 
-                player2.Die(); // Player 2 dies
-                player1.isAlive = true; // Player 1 lives
+                player2.Die();
+                player1.isAlive = true;
                 player1.SetGridPosition(player2Pos, preserveMovement: false);
 
-                // Make Player 1 visible
                 Renderer rend1 = player1.GetComponent<Renderer>();
                 if (rend1 != null)
                 {
@@ -407,14 +449,12 @@ public class GameManager : MonoBehaviour
             else if (player1.isAlive && !player2.isAlive)
             {
                 // Player 1 is alive, Player 2 is dead
-                // Swap: Player 2 becomes alive at Player 1's position, Player 1 dies
                 Vector2Int player1Pos = player1.GetGridPosition();
 
-                player1.Die(); // Player 1 dies
-                player2.isAlive = true; // Player 2 lives
+                player1.Die();
+                player2.isAlive = true;
                 player2.SetGridPosition(player1Pos, preserveMovement: false);
 
-                // Make Player 2 visible
                 Renderer rend2 = player2.GetComponent<Renderer>();
                 if (rend2 != null)
                 {
@@ -436,15 +476,16 @@ public class GameManager : MonoBehaviour
             Debug.Log("Normal position swap");
         }
 
-        // End swap window
         isSwapWindowActive = false;
         uiManager?.ShowSwapWindow(false);
 
-        // Start cooldown
         canSwap = false;
         swapCooldownTimer = swapCooldown;
     }
 
+    /// <summary>
+    /// Cancels the swap if time runs out.
+    /// </summary>
     void CancelSwap()
     {
         isSwapWindowActive = false;
@@ -452,6 +493,9 @@ public class GameManager : MonoBehaviour
         uiManager?.ShowSwapWindow(false);
     }
 
+    /// <summary>
+    /// Updates all UI elements.
+    /// </summary>
     void UpdateUI()
     {
         uiManager?.UpdateScores(player1Score, player2Score, highScore);
@@ -459,6 +503,9 @@ public class GameManager : MonoBehaviour
         uiManager?.UpdateLevel(currentLevel);
     }
 
+    /// <summary>
+    /// Called when both players are dead.
+    /// </summary>
     void LoseGame()
     {
         gameOver = true;
@@ -471,16 +518,22 @@ public class GameManager : MonoBehaviour
             ghost.enabled = false;
         }
 
-        // Play game over sound
         AudioManager.Instance?.PlayGameOver();
 
         uiManager?.ShowGameOver(currentLevel, currentScore, highScore);
 
         Debug.Log("===== GAME OVER =====");
+        Debug.Log($"Final Level: {currentLevel}");
+        Debug.Log($"Final Score: {currentScore}");
+        Debug.Log($"High Score: {highScore}");
     }
 
+    /// <summary>
+    /// Restarts the game (called by UI button).
+    /// </summary>
     public void RestartGame()
     {
+        Debug.Log("Restarting game...");
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 }

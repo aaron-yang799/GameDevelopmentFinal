@@ -1,6 +1,7 @@
 using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
+using System.Collections;
 
 public class UIManager : MonoBehaviour
 {
@@ -33,6 +34,10 @@ public class UIManager : MonoBehaviour
     public TextMeshProUGUI finalScoreText;
     public TextMeshProUGUI finalLevelText;
     public Button restartButton;
+
+    [Header("Bonus Messages")]
+    public GameObject lifeBonusText;
+    public float bonusMessageDuration = 2f;
 
     void Start()
     {
@@ -78,6 +83,20 @@ public class UIManager : MonoBehaviour
         {
             levelText.text = $"LEVEL {level}";
         }
+    }
+    public void ShowLifeBonus()
+    {
+        if (lifeBonusText != null)
+        {
+            StartCoroutine(ShowBonusMessage());
+        }
+    }
+
+    IEnumerator ShowBonusMessage()
+    {
+        lifeBonusText.SetActive(true);
+        yield return new WaitForSeconds(bonusMessageDuration);
+        lifeBonusText.SetActive(false);
     }
 
     public void UpdateLives(int lives)
