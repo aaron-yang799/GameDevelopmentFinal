@@ -1,200 +1,204 @@
 using UnityEngine;
 
 /// <summary>
-/// Controls player movement on grid using WASD (Player 1) or Arrow Keys (Player 2).
-/// Handles input, grid-based movement, and swap key detection.
+/// Controls player movement on grid with snappy rotation and input buffering.
+/// Players continue moving in current direction even if new direction is blocked.
 /// </summary>
 public class PlayerController : MonoBehaviour
 {
     [Header("Player Settings")]
-    public int playerNumber = 1; // 1 or 2
+    public int playerNumber = 1;
     public float moveSpeed = 5f;
-    
-    [Header("Status")]
-    public bool isAlive = true;
-    
+
+    [Header("Input Keys")]
+    public KeyCode upKey = KeyCode.W;
+    public KeyCode downKey = KeyCode.S;
+    public KeyCode leftKey = KeyCode.A;
+    public KeyCode rightKey = KeyCode.D;
+    public KeyCode swapKey = KeyCode.E;
+
     // Grid movement
     private Vector2Int currentGridPos;
     private Vector2Int targetGridPos;
     private Vector3 targetWorldPos;
     private bool isMoving = false;
-    
-    // Direction tracking
+
+    // Current and buffered direction
     private Vector2Int currentDirection = Vector2Int.zero;
-    private Vector2Int nextDirection = Vector2Int.zero;
-    
-    // Input keys
-    private KeyCode upKey, downKey, leftKey, rightKey, swapKey;
-    
-    // Spawn position
+    private Vector2Int bufferedDirection = Vector2Int.zero;
+
+    // Spawn position for respawning
     private Vector2Int spawnGridPos;
-    
+
+    // Death state
+    public bool isAlive = true;
+
     void Start()
     {
-        SetupControls();
-        
-        // Set initial grid position based on world position
+        // Set initial grid position
         currentGridPos = GridManager.Instance.WorldToGrid(transform.position);
         spawnGridPos = currentGridPos;
         targetGridPos = currentGridPos;
         targetWorldPos = transform.position;
-        
+
         Debug.Log($"Player {playerNumber} spawned at grid {currentGridPos}, world {transform.position}");
     }
-    
-    /// <summary>
-    /// Sets up input keys based on player number.
-    /// Player 1: WASD + E
-    /// Player 2: Arrows + /
-    /// </summary>
-    void SetupControls()
-    {
-        if (playerNumber == 1)
-        {
-            upKey = KeyCode.W;
-            downKey = KeyCode.S;
-            leftKey = KeyCode.A;
-            rightKey = KeyCode.D;
-            swapKey = KeyCode.E;
-        }
-        else // Player 2
-        {
-            upKey = KeyCode.UpArrow;
-            downKey = KeyCode.DownArrow;
-            leftKey = KeyCode.LeftArrow;
-            rightKey = KeyCode.RightArrow;
-            swapKey = KeyCode.Slash;
-        }
-    }
-    
+
     void Update()
     {
         if (!isAlive) return;
-        
+
+        // Handle input (stores buffered direction)
         HandleInput();
-        Move();
+
+        // Move if we're currently moving
+        if (isMoving)
+        {
+            Move();
+        }
+        else
+        {
+            // Reached a cell - try buffered direction first, then current direction
+
+            // First, try to turn in the buffered direction
+            if (bufferedDirection != Vector2Int.zero && TryMove(bufferedDirection))
+            {
+                // Successfully turned to buffered direction
+                currentDirection = bufferedDirection;
+                bufferedDirection = Vector2Int.zero;
+            }
+            // If buffered direction failed or no buffered input, continue in current direction
+            else if (currentDirection != Vector2Int.zero)
+            {
+                TryMove(currentDirection);
+            }
+        }
     }
-    
+
     /// <summary>
-    /// Handles player input for movement and swap.
+    /// Handles player input and buffers it.
     /// </summary>
     void HandleInput()
     {
-        // Movement input
-        if (Input.GetKeyDown(upKey))
-            nextDirection = Vector2Int.up;
-        else if (Input.GetKeyDown(downKey))
-            nextDirection = Vector2Int.down;
-        else if (Input.GetKeyDown(leftKey))
-            nextDirection = Vector2Int.left;
-        else if (Input.GetKeyDown(rightKey))
-            nextDirection = Vector2Int.right;
-        
-        // Swap input
+        // Check for new input and buffer it
+        if (Input.GetKey(upKey))
+        {
+            bufferedDirection = new Vector2Int(0, 1);
+        }
+        else if (Input.GetKey(downKey))
+        {
+            bufferedDirection = new Vector2Int(0, -1);
+        }
+        else if (Input.GetKey(leftKey))
+        {
+            bufferedDirection = new Vector2Int(-1, 0);
+        }
+        else if (Input.GetKey(rightKey))
+        {
+            bufferedDirection = new Vector2Int(1, 0);
+        }
+
+        // Swap mechanic
         if (Input.GetKeyDown(swapKey))
         {
             GameManager.Instance?.InitiateSwap(playerNumber);
         }
     }
-    
+
     /// <summary>
-    /// Handles grid-based movement.
-    /// Players move one cell at a time and snap to grid positions.
+    /// Attempts to move in the given direction.
+    /// Returns true if movement started, false if blocked.
+    /// </summary>
+    bool TryMove(Vector2Int direction)
+    {
+        if (direction == Vector2Int.zero) return false;
+
+        Vector2Int nextPos = currentGridPos + direction;
+
+        // Check if next position is walkable
+        if (GridManager.Instance.IsWalkable(nextPos))
+        {
+            targetGridPos = nextPos;
+            targetWorldPos = GridManager.Instance.GridToWorld(nextPos);
+            isMoving = true;
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Moves player towards target position and rotates to face movement direction.
     /// </summary>
     void Move()
     {
-        if (!isMoving)
+        transform.position = Vector3.MoveTowards(transform.position, targetWorldPos, moveSpeed * Time.deltaTime);
+
+        // Rotate cube to face movement direction (snappy, with 90° offset)
+        RotateTowardsMovementDirection();
+
+        if (Vector3.Distance(transform.position, targetWorldPos) < 0.01f)
         {
-            // Try to move in the next direction (buffered input)
-            if (nextDirection != Vector2Int.zero)
+            transform.position = targetWorldPos;
+            currentGridPos = targetGridPos;
+            isMoving = false;
+        }
+    }
+
+    /// <summary>
+    /// Rotates player cube instantly to face the direction they're moving.
+    /// Angles adjusted 90° clockwise for correct sprite orientation.
+    /// </summary>
+    void RotateTowardsMovementDirection()
+    {
+        // Calculate movement direction
+        Vector3 direction = (targetWorldPos - transform.position).normalized;
+
+        // Don't rotate if not moving
+        if (direction.sqrMagnitude < 0.01f) return;
+
+        // Calculate angle based on movement direction (rotated 90° clockwise)
+        float angle = 0f;
+
+        if (Mathf.Abs(direction.x) > Mathf.Abs(direction.z))
+        {
+            // Moving horizontally
+            if (direction.x > 0)
             {
-                Vector2Int newGridPos = currentGridPos + nextDirection;
-                if (GridManager.Instance.IsWalkable(newGridPos))
-                {
-                    currentDirection = nextDirection;
-                    StartMovingToCell(newGridPos);
-                    return;
-                }
+                angle = 180f;  // Moving right
             }
-            
-            // Continue in current direction if no turn
-            if (currentDirection != Vector2Int.zero)
+            else
             {
-                Vector2Int newGridPos = currentGridPos + currentDirection;
-                if (GridManager.Instance.IsWalkable(newGridPos))
-                {
-                    StartMovingToCell(newGridPos);
-                }
-                else
-                {
-                    // Hit a wall, stop moving
-                    currentDirection = Vector2Int.zero;
-                }
+                angle = 0f;    // Moving left
             }
         }
         else
         {
-            // Move towards target cell
-            transform.position = Vector3.MoveTowards(transform.position, targetWorldPos, moveSpeed * Time.deltaTime);
-            
-            // Check if reached target
-            if (Vector3.Distance(transform.position, targetWorldPos) < 0.01f)
+            // Moving vertically
+            if (direction.z > 0)
             {
-                transform.position = targetWorldPos;
-                currentGridPos = targetGridPos;
-                isMoving = false;
+                angle = 90f;   // Moving forward/up
+            }
+            else
+            {
+                angle = -90f;  // Moving backward/down
             }
         }
+
+        // Apply rotation instantly (snappy Pac-Man style)
+        transform.rotation = Quaternion.Euler(0f, angle, 0f);
     }
-    
+
     /// <summary>
-    /// Starts movement to a new grid cell.
-    /// </summary>
-    void StartMovingToCell(Vector2Int gridPos)
-    {
-        targetGridPos = gridPos;
-        targetWorldPos = GridManager.Instance.GridToWorld(gridPos);
-        isMoving = true;
-    }
-    
-    /// <summary>
-    /// Respawns player at spawn position with full health.
-    /// </summary>
-    public void Respawn()
-    {
-        currentGridPos = spawnGridPos;
-        targetGridPos = spawnGridPos;
-        targetWorldPos = GridManager.Instance.GridToWorld(spawnGridPos);
-        transform.position = targetWorldPos;
-        isMoving = false;
-        currentDirection = Vector2Int.zero;
-        nextDirection = Vector2Int.zero;
-        isAlive = true;
-        gameObject.SetActive(true);
-        
-        Debug.Log($"Player {playerNumber} respawned");
-    }
-    
-    /// <summary>
-    /// Kills the player and hides them.
-    /// </summary>
-    public void Die()
-    {
-        isAlive = false;
-        gameObject.SetActive(false);
-        Debug.Log($"Player {playerNumber} died");
-    }
-    
-    /// <summary>
-    /// Gets current grid position.
+    /// Gets the current grid position.
     /// </summary>
     public Vector2Int GetGridPosition()
     {
         return currentGridPos;
     }
-    
+
     /// <summary>
-    /// Sets grid position (used for swap mechanic).
+    /// Sets the grid position (used for spawning and swapping).
     /// </summary>
     public void SetGridPosition(Vector2Int gridPos)
     {
@@ -203,16 +207,53 @@ public class PlayerController : MonoBehaviour
         targetWorldPos = GridManager.Instance.GridToWorld(gridPos);
         transform.position = targetWorldPos;
         isMoving = false;
-        
-        Debug.Log($"Player {playerNumber} moved to grid {gridPos}");
+        currentDirection = Vector2Int.zero;
+        bufferedDirection = Vector2Int.zero;
     }
-    
+
     /// <summary>
-    /// Handles collision with pellets (detected by Pellet script).
+    /// Respawns the player at their spawn position.
+    /// </summary>
+    public void Respawn()
+    {
+        SetGridPosition(spawnGridPos);
+        isAlive = true;
+        currentDirection = Vector2Int.zero;
+        bufferedDirection = Vector2Int.zero;
+
+        // Make visible
+        Renderer rend = GetComponent<Renderer>();
+        if (rend != null)
+        {
+            rend.enabled = true;
+        }
+    }
+
+    /// <summary>
+    /// Kills the player (permanent death until respawn).
+    /// </summary>
+    public void Die()
+    {
+        isAlive = false;
+        isMoving = false;
+        currentDirection = Vector2Int.zero;
+        bufferedDirection = Vector2Int.zero;
+
+        // Make invisible
+        Renderer rend = GetComponent<Renderer>();
+        if (rend != null)
+        {
+            rend.enabled = false;
+        }
+    }
+
+    /// <summary>
+    /// Collision detection for pellets and ghosts.
     /// </summary>
     void OnTriggerEnter(Collider other)
     {
-        // Pellet collision is handled by Pellet.cs
-        // This is here for potential future use
+        if (!isAlive) return;
+
+        // Pellet collection handled by Pellet script
     }
 }
