@@ -19,23 +19,28 @@ public class Pellet : MonoBehaviour
             points = 50;
         }
     }
-    
-    /// <summary>
-    /// Detects when a player touches this pellet.
-    /// Only the matching player number can collect it.
-    /// </summary>
     void OnTriggerEnter(Collider other)
     {
         if (other.CompareTag("Player"))
         {
             PlayerController player = other.GetComponent<PlayerController>();
-            
+
             if (player != null && player.playerNumber == playerNumber && player.isAlive)
             {
-                // Notify GameManager of collection
+                // Play appropriate sound
+                if (isPowerPellet)
+                {
+                    AudioManager.Instance?.PlayPowerPelletEaten();
+                }
+                else
+                {
+                    AudioManager.Instance?.PlayPelletEaten();
+                }
+
+                // Notify game manager
                 GameManager.Instance?.CollectPellet(this, player.playerNumber);
-                
-                // Destroy this pellet
+
+                // Destroy pellet
                 Destroy(gameObject);
             }
         }

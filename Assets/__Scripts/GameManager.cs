@@ -209,6 +209,9 @@ public class GameManager : MonoBehaviour
 
         Debug.Log($"===== LEVEL {currentLevel} COMPLETE! =====");
 
+        // Play level complete sound
+        AudioManager.Instance?.PlayLevelComplete();
+
         StartCoroutine(LevelTransition());
     }
 
@@ -267,6 +270,10 @@ public class GameManager : MonoBehaviour
         if (lives > 0)
         {
             lives--;
+
+            // Play death sound
+            AudioManager.Instance?.PlayPlayerDeath();
+
             player.Respawn();
             UpdateUI();
 
@@ -277,6 +284,9 @@ public class GameManager : MonoBehaviour
         }
         else
         {
+            // Play death sound
+            AudioManager.Instance?.PlayPlayerDeath();
+
             player.Die();
 
             if (!player1.isAlive && !player2.isAlive)
@@ -307,6 +317,9 @@ public class GameManager : MonoBehaviour
             PlayerPrefs.SetInt(HIGH_SCORE_KEY, highScore);
             PlayerPrefs.Save();
         }
+
+        // Play ghost eaten sound
+        AudioManager.Instance?.PlayGhostEaten();
 
         UpdateUI();
     }
@@ -399,6 +412,9 @@ public class GameManager : MonoBehaviour
         {
             ghost.enabled = false;
         }
+
+        // Play game over sound
+        AudioManager.Instance?.PlayGameOver();
 
         uiManager?.ShowGameOver(currentLevel, currentScore, highScore);
 
